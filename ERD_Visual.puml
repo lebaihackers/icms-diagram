@@ -1,0 +1,384 @@
+@startuml ERD_Sistema_eAduan_JIM
+' ═══════════════════════════════════════════════════════════════
+' ERD Diagram - Sistem E-Aduan JIM 3.0
+' Entity Relationship Diagram (Visual Format)
+' ═══════════════════════════════════════════════════════════════
+
+!define TABLE(x) entity x << (T,#FFAAAA) >>
+!define VIEW(x) entity x << (V,#AAFFAA) >>
+
+skinparam linetype ortho
+skinparam backgroundColor #FEFEFE
+skinparam entity {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+    FontSize 11
+}
+
+' ═══════════════════════════════════════════════════════════════
+' REFERENCE TABLES (Lookup Data)
+' ═══════════════════════════════════════════════════════════════
+
+entity "NEGERI" as negeri {
+    * id : INT <<PK>>
+    --
+    * nama : VARCHAR(100)
+    * kod : VARCHAR(10) <<UK>>
+}
+
+entity "KATEGORI_ADUAN" as kategori {
+    * id : INT <<PK>>
+    --
+    * nama : VARCHAR(255)
+    keterangan : TEXT
+    status : ENUM('aktif','tidak_aktif')
+}
+
+' ═══════════════════════════════════════════════════════════════
+' USER ENTITIES (Main Actors)
+' ═══════════════════════════════════════════════════════════════
+
+entity "PENGADU" as pengadu {
+    * id : INT <<PK>>
+    --
+    * nama_penuh : VARCHAR(255)
+    no_kad_pengenalan : VARCHAR(20)
+    * email : VARCHAR(255) <<UK>>
+    * password : VARCHAR(255)
+    no_telefon : VARCHAR(20)
+    alamat : TEXT
+    poskod : VARCHAR(10)
+    daerah : VARCHAR(100)
+    negeri_id : INT <<FK>>
+    --
+    google_id : VARCHAR(255)
+    facebook_id : VARCHAR(255)
+    foto_profil : VARCHAR(500)
+    --
+    tarikh_daftar : DATETIME
+    last_login : DATETIME
+    status : ENUM
+}
+
+entity "PENTADBIR" as pentadbir {
+    * id : INT <<PK>>
+    --
+    * nama_penuh : VARCHAR(255)
+    * email : VARCHAR(255) <<UK>>
+    * password : VARCHAR(255)
+    no_telefon : VARCHAR(20)
+    * workflow_role : ENUM
+    negeri_id : INT <<FK>>
+    jabatan : VARCHAR(255)
+    status : ENUM
+    foto_profil : VARCHAR(500)
+    --
+    tarikh_daftar : DATETIME
+    last_login : DATETIME
+}
+
+note right of pentadbir
+    **Workflow Roles:**
+    • super_admin
+    • pegawai_penerima (HQ)
+    • pengarah (HQ)
+    • pegawai_negeri (State)
+end note
+
+' ═══════════════════════════════════════════════════════════════
+' CORE COMPLAINT ENTITY
+' ═══════════════════════════════════════════════════════════════
+
+entity "ADUAN" as aduan {
+    * id : INT <<PK>>
+    --
+    * id_pengadu : INT <<FK>>
+    * tajuk_aduan : VARCHAR(500)
+    * butiran_aduan : TEXT
+    --
+    jenis_aduan : ENUM
+    kategori_aduan_id : INT <<FK>>
+    kategori_lain : VARCHAR(255)
+    --
+    negeri_id : INT <<FK>>
+    daerah : VARCHAR(100)
+    poskod : VARCHAR(10)
+    lokasi : TEXT
+    --
+    anggaran_bilangan_pati : VARCHAR(50)
+    waktu_operasi_dari : TIME
+    waktu_operasi_hingga : TIME
+    warganegara : VARCHAR(100)
+    jenis_premis : TEXT
+    --
+    **Workflow Status**
+    workflow_stage : ENUM
+    status_kelengkapan : ENUM
+    --
+    **Assigned Officers**
+    pegawai_penerima_id : INT <<FK>>
+    pegawai_penerima_nama : VARCHAR(255)
+    pengarah_id : INT <<FK>>
+    pengarah_nama : VARCHAR(255)
+    pegawai_negeri_id : INT <<FK>>
+    pegawai_negeri_nama : VARCHAR(255)
+    --
+    **Timestamps**
+    tarikh_aduan : DATETIME
+    tarikh_semakan : DATETIME
+    tarikh_agihan : DATETIME
+    tarikh_kembalikan : DATETIME
+    tarikh_selesai : DATETIME
+    tarikh_ditolak : DATETIME
+}
+
+note bottom of aduan
+    **Workflow Stages:**
+    1. baru
+    2. semakan_kelengkapan
+    3. tidak_lengkap
+    4. menunggu_agihan
+    5. dalam_tindakan
+    6. menunggu_pengesahan
+    7. selesai
+    8. ditolak
+end note
+
+' ═══════════════════════════════════════════════════════════════
+' ATTACHMENT ENTITIES
+' ═══════════════════════════════════════════════════════════════
+
+entity "LAMPIRAN" as lampiran {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    * nama_fail : VARCHAR(255)
+    * fail_path : VARCHAR(500)
+    jenis_fail : VARCHAR(100)
+    saiz_fail : INT
+    tarikh_muat_naik : DATETIME
+}
+
+entity "VIDEO_LAMPIRAN" as video {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    * nama_fail : VARCHAR(255)
+    * fail_path : VARCHAR(500)
+    jenis_fail : VARCHAR(100)
+    saiz_fail : BIGINT
+    durasi : INT
+    --
+    dimuat_naik_oleh : ENUM
+    dimuat_naik_oleh_id : INT
+    dimuat_naik_oleh_nama : VARCHAR(255)
+    tarikh_muat_naik : DATETIME
+}
+
+' ═══════════════════════════════════════════════════════════════
+' WORKFLOW & HISTORY ENTITIES
+' ═══════════════════════════════════════════════════════════════
+
+entity "ADUAN_WORKFLOW_HISTORY" as workflow {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    stage_dari : VARCHAR(50)
+    * stage_ke : VARCHAR(50)
+    --
+    pentadbir_id : INT <<FK>>
+    pentadbir_nama : VARCHAR(255)
+    workflow_role : VARCHAR(50)
+    tindakan : VARCHAR(255)
+    catatan : TEXT
+    tarikh_tindakan : DATETIME
+}
+
+entity "ADUAN_KEMBALIKAN" as kembalikan {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    * sebab : TEXT
+    --
+    pentadbir_id : INT <<FK>>
+    pentadbir_nama : VARCHAR(255)
+    --
+    tarikh_kembalikan : DATETIME
+    tarikh_diperbaiki : DATETIME
+    status : ENUM
+}
+
+entity "TINDAKAN_ADUAN" as tindakan {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    pentadbir_id : INT <<FK>>
+    pentadbir_nama : VARCHAR(255)
+    * tindakan : TEXT
+    status_tindakan : ENUM
+    tarikh_tindakan : DATETIME
+    tarikh_selesai : DATETIME
+}
+
+entity "KOMEN" as komen {
+    * id : INT <<PK>>
+    --
+    * aduan_id : INT <<FK>>
+    * user_id : INT
+    * user_type : ENUM
+    user_nama : VARCHAR(255)
+    * komen : TEXT
+    tarikh_komen : DATETIME
+}
+
+' ═══════════════════════════════════════════════════════════════
+' NOTIFICATION ENTITIES
+' ═══════════════════════════════════════════════════════════════
+
+entity "NOTIFIKASI_PENGADU" as notif_pengadu {
+    * id : INT <<PK>>
+    --
+    * pengadu_id : INT <<FK>>
+    * aduan_id : INT <<FK>>
+    * jenis_notifikasi : VARCHAR(50)
+    * tajuk : VARCHAR(255)
+    * mesej : TEXT
+    dibaca : TINYINT(1)
+    tarikh_cipta : DATETIME
+}
+
+entity "NOTIFIKASI_PENTADBIR" as notif_pentadbir {
+    * id : INT <<PK>>
+    --
+    * id_pentadbir : INT <<FK>>
+    * id_aduan : INT <<FK>>
+    * jenis_notifikasi : VARCHAR(50)
+    * tajuk : VARCHAR(255)
+    * mesej : TEXT
+    sudah_dibaca : TINYINT(1)
+    tarikh_dicipta : DATETIME
+    tarikh_dibaca : DATETIME
+}
+
+' ═══════════════════════════════════════════════════════════════
+' AUDIT & MONITORING ENTITIES
+' ═══════════════════════════════════════════════════════════════
+
+entity "AUDIT_LOGS" as audit {
+    * id : BIGINT <<PK>>
+    --
+    * action : VARCHAR(100)
+    * user_type : ENUM
+    * user_id : INT
+    details : JSON
+    * ip_address : VARCHAR(45)
+    user_agent : TEXT
+    created_at : TIMESTAMP
+}
+
+entity "SLOW_QUERIES" as slow_query {
+    * id : INT <<PK>>
+    --
+    query_sql : TEXT
+    query_time : DECIMAL
+    page : VARCHAR
+    user_id : INT
+    user_type : VARCHAR
+    client_ip : VARCHAR
+    created_at : TIMESTAMP
+}
+
+entity "NEWS_UPDATES" as news {
+    * id : INT <<PK>>
+    --
+    * title : VARCHAR(255)
+    * content : TEXT
+    excerpt : TEXT
+    category : ENUM
+    status : ENUM
+    created_by : INT <<FK>>
+    published_at : DATETIME
+    created_at : DATETIME
+    updated_at : DATETIME
+}
+
+entity "SAVED_SEARCHES" as saved_search {
+    * id : INT <<PK>>
+    --
+    * user_id : VARCHAR(50)
+    * user_type : ENUM
+    * search_name : VARCHAR(100)
+    --
+    search_keyword : VARCHAR(255)
+    filter_status : VARCHAR(50)
+    filter_category : INT <<FK>>
+    filter_negeri : INT <<FK>>
+    filter_priority : VARCHAR(20)
+    date_from : DATE
+    date_to : DATE
+    sort_by : VARCHAR(50)
+    is_default : BOOLEAN
+    --
+    created_at : TIMESTAMP
+    last_used : TIMESTAMP
+    use_count : INT
+}
+
+' ═══════════════════════════════════════════════════════════════
+' RELATIONSHIPS
+' ═══════════════════════════════════════════════════════════════
+
+' Pengadu Relationships
+pengadu ||--o{ aduan : "membuat\n(id_pengadu)"
+pengadu }o--|| negeri : "tinggal di\n(negeri_id)"
+pengadu ||--o{ notif_pengadu : "menerima"
+
+' Pentadbir Relationships
+pentadbir }o--|| negeri : "bertugas di\n(negeri_id)"
+pentadbir ||--o{ aduan : "pegawai_penerima"
+pentadbir ||--o{ aduan : "pengarah"
+pentadbir ||--o{ aduan : "pegawai_negeri"
+pentadbir ||--o{ workflow : "melakukan"
+pentadbir ||--o{ kembalikan : "kembalikan"
+pentadbir ||--o{ tindakan : "bertindak"
+pentadbir ||--o{ notif_pentadbir : "menerima"
+pentadbir ||--o{ news : "menulis"
+
+' Aduan Core Relationships
+aduan }o--|| kategori : "berkategori\n(kategori_aduan_id)"
+aduan }o--|| negeri : "berlaku di\n(negeri_id)"
+aduan ||--o{ lampiran : "mempunyai"
+aduan ||--o{ video : "mempunyai"
+aduan ||--o{ komen : "mempunyai"
+aduan ||--o{ workflow : "workflow history"
+aduan ||--o{ kembalikan : "dikembalikan"
+aduan ||--o{ tindakan : "tindakan diambil"
+aduan ||--o{ notif_pengadu : "menghasilkan"
+aduan ||--o{ notif_pentadbir : "menghasilkan"
+
+' Search Relationships
+saved_search }o--|| kategori : "filter by"
+saved_search }o--|| negeri : "filter by"
+
+' ═══════════════════════════════════════════════════════════════
+' LEGEND
+' ═══════════════════════════════════════════════════════════════
+
+legend bottom right
+    **Legend**
+    PK = Primary Key
+    FK = Foreign Key
+    UK = Unique Key
+    --
+    **Relationships**
+    ||--o{ = One to Many
+    }o--|| = Many to One
+    ||--|| = One to One
+    --
+    **Database**: sistem_eaduan
+    **Engine**: InnoDB
+    **Charset**: utf8mb4_unicode_ci
+    **Created**: 2026-02-03
+end legend
+
+@enduml
