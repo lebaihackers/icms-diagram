@@ -1,0 +1,524 @@
+@startuml ER_DIAGRAM_SISTEM_EADUAN_3.0
+!define ENTITY_BGCOLOR #E8F4F8
+!define PK_COLOR #FFD700
+!define FK_COLOR #87CEEB
+
+skinparam linetype ortho
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+title ER DIAGRAM - SISTEM E-ADUAN 3.0\nJabatan Imigresen Malaysia\nTarikh: 04 February 2026
+
+' =====================================================
+' ENTITI UTAMA - PENGGUNA
+' =====================================================
+
+entity "PENGADU" as pengadu {
+  * **id : INT** <<PK>>
+  --
+  * nama_penuh : VARCHAR(255)
+  jenis_pengenalan : VARCHAR(20)
+  no_mykad : VARCHAR(14) <<UK>>
+  nama_syarikat : VARCHAR(255)
+  jenis_pelanggan : VARCHAR(50)
+  jantina : VARCHAR(20)
+  umur : VARCHAR(20)
+  bangsa : VARCHAR(50)
+  kewarganegaraan : VARCHAR(50)
+  pekerjaan : VARCHAR(100)
+  * email : VARCHAR(255) <<UK>>
+  email_contact : VARCHAR(255)
+  no_telefon : VARCHAR(20)
+  no_telefon_bimbit : VARCHAR(20)
+  alamat : TEXT
+  poskod : VARCHAR(5)
+  # negeri_id : INT <<FK>>
+  password : VARCHAR(255)
+  foto_profil : VARCHAR(255)
+  status : VARCHAR(20) [default: aktif]
+  reset_token : VARCHAR(255)
+  reset_token_expiry : DATETIME
+  * tarikh_daftar : TIMESTAMP [default: NOW]
+  last_login : DATETIME
+  google_id : VARCHAR(255) <<UK>>
+  facebook_id : VARCHAR(100) <<UK>>
+  oauth_provider : VARCHAR(50)
+  email_verified : TINYINT [default: 0]
+}
+
+entity "PENTADBIR" as pentadbir {
+  * **id : INT** <<PK>>
+  --
+  * nama_penuh : VARCHAR(255)
+  * email : VARCHAR(255) <<UK>>
+  * password : VARCHAR(255)
+  * workflow_role : ENUM
+    - super_admin
+    - pegawai_penerima
+    - ketua_penerimaan_hq
+    - pengarah_penguatkuasaan_hq
+    - pengarah_negeri
+    - ketua_penerimaan_negeri
+    - pegawai_negeri
+  # negeri_id : INT <<FK>>
+  no_telefon : VARCHAR(20)
+  foto_profil : VARCHAR(255)
+  status : VARCHAR(20) [default: aktif]
+  * tarikh_daftar : TIMESTAMP [default: NOW]
+  last_login : DATETIME
+  jawatan : VARCHAR(255)
+  created_by : INT
+  updated_at : DATETIME
+}
+
+' =====================================================
+' ENTITI UTAMA - ADUAN
+' =====================================================
+
+entity "ADUAN" as aduan {
+  * **id : INT** <<PK>>
+  --
+  * # id_pengadu : INT <<FK>>
+  # kategori_aduan_id : INT <<FK>>
+  kategori_lain : VARCHAR(255)
+  # negeri_id : INT <<FK>>
+  poskod : VARCHAR(10)
+  daerah : VARCHAR(100)
+  * tajuk_aduan : VARCHAR(255)
+  jenis_aduan : ENUM [Aduan, Cadangan, Penghargaan]
+  * butiran_aduan : TEXT
+  nama_syarikat : VARCHAR(255)
+  tarikh_kejadian : DATE
+  lokasi_kejadian : TEXT
+  anggaran_bilangan_pati : VARCHAR(50)
+  waktu_operasi_dari : TIME
+  waktu_operasi_hingga : TIME
+  warganegara : VARCHAR(100)
+  jenis_premis : TEXT
+  latitude : DECIMAL(10,8)
+  longitude : DECIMAL(11,8)
+  location_accuracy : DECIMAL(10,2)
+  ..Workflow Fields..
+  workflow_stage : VARCHAR(50) [default: baru]
+  # assigned_to : INT <<FK>>
+  assigned_to_nama : VARCHAR(255)
+  # pegawai_penerima_id : INT <<FK>>
+  pegawai_penerima_nama : VARCHAR(255)
+  # pengarah_id : INT <<FK>>
+  pengarah_nama : VARCHAR(255)
+  ..Date Tracking..
+  * tarikh_aduan : TIMESTAMP [default: NOW]
+  tarikh_kemaskini : TIMESTAMP [auto update]
+  tarikh_terima_pegawai : DATETIME
+  tarikh_agihan : DATETIME
+  tarikh_kembalikan : DATETIME
+  tarikh_mula_tindakan : DATETIME
+  tarikh_selesai : DATE
+  ..Status & Outcome..
+  status_penyelesaian : VARCHAR(255)
+  ringkasan_tindakan : TEXT
+  keputusan_akhir : TEXT
+  bilangan_pekerja_terlibat : INT
+  bilangan_majikan_terlibat : INT
+  jumlah_denda : DECIMAL(12,2)
+  tindakan_susulan : TEXT
+  status_kelengkapan : ENUM [pending_semakan, lengkap, tidak_lengkap]
+  rejection_reason : TEXT
+  rejection_count : INT [default: 0]
+  tarikh_reject : DATETIME
+  # rejected_by : INT <<FK>>
+  current_stage : VARCHAR(100) [default: baru]
+  status_selesai : ENUM [belum_selesai, selesai, menunggu_laporan]
+  catatan_siasatan : TEXT
+  tarikh_lapor_ketua_negeri : DATETIME
+  tarikh_lapor_pengarah_negeri : DATETIME
+  tarikh_lapor_pengarah_hq : DATETIME
+}
+
+' =====================================================
+' ENTITI REFERENCE - MASTER DATA
+' =====================================================
+
+entity "NEGERI" as negeri {
+  * **id : INT** <<PK>>
+  --
+  * nama : VARCHAR(100)
+  * kod : VARCHAR(10) <<UK>>
+}
+
+entity "KATEGORI_ADUAN" as kategori {
+  * **id : INT** <<PK>>
+  --
+  * nama : VARCHAR(255)
+  keterangan : TEXT
+  penerangan : TEXT
+}
+
+entity "WORKFLOW_STAGES" as workflow_stages {
+  * **id : INT** <<PK>>
+  --
+  * stage_code : VARCHAR(50) <<UK>>
+  * stage_name : VARCHAR(100)
+  * stage_order : INT
+  * role_responsible : VARCHAR(50)
+  description : TEXT
+  created_at : TIMESTAMP
+}
+
+' =====================================================
+' ENTITI LAMPIRAN
+' =====================================================
+
+entity "LAMPIRAN" as lampiran {
+  * **id : INT** <<PK>>
+  --
+  * # aduan_id : INT <<FK>>
+  * nama_fail : VARCHAR(255)
+  * fail_path : VARCHAR(500)
+  jenis_fail : VARCHAR(100)
+  saiz_fail : INT [bytes]
+  dimuat_naik_oleh : VARCHAR(50)
+  dimuat_naik_oleh_id : INT
+  dimuat_naik_oleh_nama : VARCHAR(255)
+  * tarikh_muat_naik : TIMESTAMP [default: NOW]
+}
+
+entity "VIDEO_LAMPIRAN" as video_lampiran {
+  * **id : INT** <<PK>>
+  --
+  * # aduan_id : INT <<FK>>
+  * nama_fail : VARCHAR(255)
+  * fail_path : VARCHAR(500)
+  jenis_fail : VARCHAR(100)
+  saiz_fail : BIGINT [bytes]
+  durasi : INT [seconds]
+  dimuat_naik_oleh : ENUM [pengadu, pentadbir]
+  dimuat_naik_oleh_id : INT
+  dimuat_naik_oleh_nama : VARCHAR(255)
+  * tarikh_muat_naik : DATETIME [default: NOW]
+}
+
+' =====================================================
+' ENTITI WORKFLOW & HISTORY
+' =====================================================
+
+entity "ADUAN_WORKFLOW_HISTORY" as workflow_history {
+  * **id : INT** <<PK>>
+  --
+  * # aduan_id : INT <<FK>>
+  stage_dari : VARCHAR(50)
+  * stage_ke : VARCHAR(50)
+  # pentadbir_id : INT <<FK>>
+  pentadbir_nama : VARCHAR(255)
+  workflow_role : VARCHAR(50)
+  * tindakan : VARCHAR(255)
+  catatan : TEXT
+  sebab_kembalikan : TEXT
+  * tarikh_tindakan : TIMESTAMP [default: NOW]
+}
+
+entity "ADUAN_KEMBALIKAN" as aduan_kembalikan {
+  * **id : INT** <<PK>>
+  --
+  * # aduan_id : INT <<FK>>
+  * sebab : TEXT
+  # pentadbir_id : INT <<FK>>
+  pentadbir_nama : VARCHAR(255)
+  tarikh_kembalikan : DATETIME [default: NOW]
+  tarikh_diperbaiki : DATETIME
+  status : ENUM [pending, diperbaiki, batal]
+}
+
+entity "ADUAN_KOMEN" as aduan_komen {
+  * **id : INT** <<PK>>
+  --
+  * # aduan_id : INT <<FK>>
+  * pengguna_jenis : ENUM [pengadu, pentadbir]
+  * pengguna_id : INT
+  * pengguna_nama : VARCHAR(255)
+  * komen : TEXT
+  nama_fail_lampiran : VARCHAR(255)
+  * tarikh_komen : DATETIME [default: NOW]
+}
+
+' =====================================================
+' ENTITI NOTIFIKASI
+' =====================================================
+
+entity "NOTIFIKASI_PENGADU" as notif_pengadu {
+  * **id : INT** <<PK>>
+  --
+  * # pengadu_id : INT <<FK>>
+  * # aduan_id : INT <<FK>>
+  * jenis_notifikasi : VARCHAR(50)
+  * tajuk : VARCHAR(255)
+  * mesej : TEXT
+  dibaca : TINYINT [default: 0]
+  * tarikh_cipta : DATETIME [default: NOW]
+}
+
+entity "NOTIFIKASI_PENTADBIR" as notif_pentadbir {
+  * **id : INT** <<PK>>
+  --
+  * # id_pentadbir : INT <<FK>>
+  # id_aduan : INT <<FK>>
+  * jenis_notifikasi : VARCHAR(50)
+  * tajuk : VARCHAR(255)
+  * mesej : TEXT
+  sudah_dibaca : TINYINT [default: 0]
+  * tarikh_dicipta : DATETIME
+  tarikh_dibaca : DATETIME
+}
+
+' =====================================================
+' ENTITI NEWS & ANNOUNCEMENTS
+' =====================================================
+
+entity "NEWS_UPDATES" as news_updates {
+  * **id : INT** <<PK>>
+  --
+  * title_ms : VARCHAR(255)
+  * title_en : VARCHAR(255)
+  title_zh : VARCHAR(255)
+  title_ta : VARCHAR(255)
+  * content_ms : TEXT
+  * content_en : TEXT
+  content_zh : TEXT
+  content_ta : TEXT
+  * category_ms : VARCHAR(100)
+  * category_en : VARCHAR(100)
+  category_zh : VARCHAR(100)
+  category_ta : VARCHAR(100)
+  icon : VARCHAR(50) [default: bi-newspaper]
+  status : ENUM [draft, published]
+  * publish_date : DATE
+  * # created_by : INT <<FK>>
+  * created_at : TIMESTAMP [default: NOW]
+  updated_at : TIMESTAMP [auto update]
+}
+
+' =====================================================
+' ENTITI AUDIT & SECURITY
+' =====================================================
+
+entity "AUDIT_LOGS" as audit_logs {
+  * **id : BIGINT** <<PK>>
+  --
+  * action : VARCHAR(100)
+  * user_type : ENUM [pengadu, pentadbir]
+  * user_id : INT
+  details : LONGTEXT [JSON]
+  * ip_address : VARCHAR(45)
+  user_agent : TEXT
+  gps_latitude : DECIMAL(10,8)
+  gps_longitude : DECIMAL(11,8)
+  gps_accuracy : DECIMAL(10,2)
+  location_method : ENUM [ip, gps, both]
+  gps_timestamp : TIMESTAMP
+  * created_at : TIMESTAMP [default: NOW]
+}
+
+' =====================================================
+' ENTITI MONITORING & PERFORMANCE
+' =====================================================
+
+entity "PERFORMANCE_METRICS" as performance_metrics {
+  * **id : INT** <<PK>>
+  --
+  * page_url : VARCHAR(255)
+  request_method : ENUM [GET, POST, PUT, DELETE]
+  * page_load_time : DECIMAL(10,4)
+  * memory_usage : INT [bytes]
+  * memory_peak : INT [bytes]
+  query_count : INT [default: 0]
+  query_time : DECIMAL(10,4)
+  user_id : INT
+  user_type : ENUM [pengadu, pentadbir, guest]
+  ip_address : VARCHAR(45)
+  user_agent : TEXT
+  created_at : TIMESTAMP [default: NOW]
+}
+
+entity "SLOW_QUERIES" as slow_queries {
+  * **id : INT** <<PK>>
+  --
+  * query_hash : VARCHAR(64)
+  * query_text : TEXT
+  * execution_time : DECIMAL(10,4)
+  rows_examined : INT
+  rows_returned : INT
+  user_id : INT
+  user_type : ENUM [pengadu, pentadbir]
+  page_url : VARCHAR(255)
+  ip_address : VARCHAR(45)
+  created_at : TIMESTAMP [default: NOW]
+}
+
+entity "SYSTEM_ALERTS" as system_alerts {
+  * **id : INT** <<PK>>
+  --
+  * alert_type : ENUM [error, warning, info, critical]
+  * alert_category : VARCHAR(50)
+  * alert_title : VARCHAR(255)
+  * alert_message : TEXT
+  severity_level : TINYINT [1-4]
+  is_resolved : TINYINT [default: 0]
+  resolved_at : TIMESTAMP
+  # resolved_by : INT <<FK>>
+  resolution_notes : TEXT
+  source_file : VARCHAR(255)
+  stack_trace : TEXT
+  metadata : LONGTEXT [JSON]
+  created_at : TIMESTAMP [default: NOW]
+  updated_at : TIMESTAMP [auto update]
+}
+
+entity "ERROR_SUMMARY" as error_summary {
+  * **id : INT** <<PK>>
+  --
+  * error_hash : VARCHAR(64) <<UK>>
+  * error_type : VARCHAR(100)
+  * error_message : VARCHAR(500)
+  error_file : VARCHAR(255)
+  error_line : INT
+  occurrence_count : INT [default: 1]
+  first_seen : TIMESTAMP [default: NOW]
+  last_seen : TIMESTAMP [auto update]
+  is_acknowledged : TINYINT [default: 0]
+  # acknowledged_by : INT <<FK>>
+  acknowledged_at : TIMESTAMP
+}
+
+' =====================================================
+' RELATIONSHIPS - MAIN ENTITIES
+' =====================================================
+
+' Pengadu Relationships
+pengadu ||--o{ aduan : "membuat"
+pengadu }o--|| negeri : "tinggal di"
+pengadu ||--o{ audit_logs : "dicatat dalam"
+pengadu ||--o{ notif_pengadu : "menerima"
+
+' Pentadbir Relationships
+pentadbir ||--o{ workflow_history : "memproses"
+pentadbir ||--o{ aduan_kembalikan : "mengembalikan"
+pentadbir ||--o{ audit_logs : "dicatat dalam"
+pentadbir ||--o{ notif_pentadbir : "menerima"
+pentadbir ||--o{ news_updates : "mencipta"
+pentadbir }o--|| negeri : "bertugas di"
+pentadbir ||--o{ system_alerts : "menyelesaikan"
+pentadbir ||--o{ error_summary : "mengakui"
+
+' Aduan Relationships
+aduan }o--|| pengadu : "dibuat oleh"
+aduan }o--|| kategori : "berkategori"
+aduan }o--|| negeri : "berlaku di"
+aduan ||--o{ lampiran : "mempunyai gambar"
+aduan ||--o{ video_lampiran : "mempunyai video"
+aduan ||--o{ workflow_history : "mempunyai sejarah"
+aduan ||--o{ aduan_komen : "mempunyai komen"
+aduan ||--o{ aduan_kembalikan : "dikembalikan"
+aduan ||--o{ notif_pengadu : "menghantar ke pengadu"
+aduan ||--o{ notif_pentadbir : "menghantar ke pentadbir"
+
+' Negeri Relationships
+negeri ||--o{ pengadu : "mempunyai penduduk"
+negeri ||--o{ pentadbir : "mempunyai pegawai"
+negeri ||--o{ aduan : "mempunyai aduan"
+
+' Kategori Relationships
+kategori ||--o{ aduan : "mengkategorikan"
+
+' =====================================================
+' RELATIONSHIPS - MONITORING & AUDIT
+' =====================================================
+
+' Performance & Monitoring
+pengadu ||--o{ performance_metrics : "diukur"
+pentadbir ||--o{ performance_metrics : "diukur"
+pengadu ||--o{ slow_queries : "mencetus"
+pentadbir ||--o{ slow_queries : "mencetus"
+
+' =====================================================
+' NOTES & LEGENDS
+' =====================================================
+
+note top of pengadu
+  **PENGADU**
+  - OAuth Integration (Google, Facebook)
+  - Email verification required
+  - Password reset token support
+  - GPS location tracking
+  - Profile photo upload
+end note
+
+note top of pentadbir
+  **WORKFLOW ROLES HIERARCHY**
+  1. super_admin (Full Access)
+  2. pegawai_penerima (First Checker - HQ)
+  3. ketua_penerimaan_hq (Review & Forward)
+  4. pengarah_penguatkuasaan_hq (Assign to States)
+  5. pengarah_negeri (State Director)
+  6. ketua_penerimaan_negeri (State Head)
+  7. pegawai_negeri (Investigation Officer)
+end note
+
+note bottom of aduan
+  **WORKFLOW STAGES (14 Stages)**
+  baru → semakan_kelengkapan → 
+  di_ketua_hq → di_pengarah_hq → 
+  menunggu_agihan → di_pengarah_negeri → 
+  di_ketua_negeri → di_pegawai_negeri → 
+  siasatan → lapor_ketua_negeri → 
+  lapor_pengarah_negeri → lapor_pengarah_hq → 
+  selesai
+  
+  **Special Stages:**
+  - tidak_lengkap (returned to pengadu)
+  - rejection tracking with count
+end note
+
+note right of audit_logs
+  **COMPREHENSIVE AUDIT**
+  - All user actions logged
+  - GPS location tracking
+  - IP address & User Agent
+  - JSON details storage
+  - Security compliance
+end note
+
+note right of workflow_history
+  **COMPLETE AUDIT TRAIL**
+  - Every stage transition logged
+  - Pentadbir actions tracked
+  - Rejection reasons recorded
+  - Timestamp for each action
+  - Role-based attribution
+end note
+
+legend right
+  |= Symbol |= Meaning |
+  | **PK** | Primary Key |
+  | **FK** | Foreign Key |
+  | **UK** | Unique Key |
+  | * | Required Field |
+  | # | Foreign Key Reference |
+  
+  |= Cardinality |= Symbol |
+  | One to Many | ||--o{ |
+  | Many to One | }o--|| |
+  | One to One | ||--|| |
+  
+  **Database Engine**: InnoDB
+  **Character Set**: UTF8MB4
+  **Collation**: utf8mb4_unicode_ci
+  **Total Tables**: 20+
+  **Total Views**: 1+ (v_aduan_map)
+  
+  **Version**: 3.0
+  **Date**: 04 February 2026
+  **Organization**: Jabatan Imigresen Malaysia
+endlegend
+
+@enduml
